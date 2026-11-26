@@ -1,3 +1,4 @@
+pub mod anchor;
 pub mod ancestry;
 pub mod config;
 pub mod http;
