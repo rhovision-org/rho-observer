@@ -1,89 +1,68 @@
 # Rho Observer
 
-**A green light is not the whole story.**
+Two nodes report the same finalized block. A third goes quiet. Your app has a promising answer and an incomplete picture. Which block should it read?
 
-[![CI](https://github.com/rhovision-org/rho-observer/actions/workflows/ci.yml/badge.svg)](https://github.com/rhovision-org/rho-observer/actions/workflows/ci.yml) [![Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+I built Observer to make that decision inspectable. It asks several Rholo or RChain nodes what they saw, keeps missing and conflicting replies visible, and gives an app a block to read when the evidence supports one.
 
-Created by **[AixAria](https://github.com/aixaria0)** ([@aixaria0](https://github.com/aixaria0)).
+Created by [AixAria](https://github.com/aixaria0).
 
-Imagine checking a network with three nodes. Two give you the same answer. The third never replies. Is the network healthy?
+Forge and Foundry build contracts. Weave can use their finite state tables to generate recovery code. Observer gives the application evidence for a separate network read. [How the projects connect](#what-an-application-does-next)
 
-You know that two answers agree. You don't know what the missing node would have said.
+![Observer receives two matching reports while a third source is offline and withholds the read anchor. The third source then reports block 841. A verified path from 842 to 841 makes 841 the anchor.](docs/motion/overview.gif)
 
-That small distinction is why Rho Observer exists. I wanted a way to see the evidence instead of trusting a single gateway or a reassuring green indicator.
+[Static storyboard](docs/motion/overview.png) · [Text walkthrough](docs/motion/README.md)
 
-![Three sources on a radar-like illustration; two agree and one times out](docs/motion/overview.gif)
+## Open a report
 
-[Still image](docs/motion/overview.png) · [How the animation was made](docs/motion/README.md)
+The public testnet Observer is a quick way to see what an application receives. With curl and Python 3, fetch its read-only report.
 
-## See it for yourself
+```sh
+curl -fsS https://testnet.rhobot.net/observer/v1/observation | python3 -m json.tool
+```
 
-[Open Rholox](https://rholox.com/#rho-observer) to see the browser workspace, or open the [public observation report](https://testnet.rhobot.net/observer/v1/observation) directly. No wallet or transaction is needed. These are existing hosted services, whose availability and deployed revision can change.
+Start with `observations` for the per-node rows and `verdict` for the comparison. Three identical reports and one missing report mean three of three comparable sources agree and coverage is three of four. Each sample carries its starting time so a client can distinguish a fresh result from an old one.
 
-Observer asks configured Rholo/RChain endpoints what they know about finalized blocks. It compares the answers, keeps failed requests visible and serves a cached report to applications. Where applicable, it can check a bounded path through raw block history.
+Rholox is a browser workspace for RChain. Its Observer panel consumes these reports and shows the per-source evidence and its freshness. There is a separate API for applications that need to select a block rather than display the whole report. [Public observation endpoint](https://testnet.rhobot.net/observer/v1/observation) · [Rholox consumer source](https://github.com/aixaria0/Rholox/blob/main/src/RhoObserverPanel.tsx)
 
-The interesting part is what it refuses to hide:
+## Ask for a read anchor
 
-- Agreement with missing sources is not full coverage.
-- Different heights need not mean conflicting histories.
-- A responding service is not necessarily ready.
+A read anchor names a network, shard, height and block hash. Use the hash for each related read so that, for instance, a balance and its associated record come from the same block.
 
-The report exposes these distinctions instead of collapsing them into one boolean.
+`GET /v1/read-anchor` requires a fresh sample and full coverage from at least two configured sources. If they all report the same identity, the evidence is `unanimous_reports`. If sources are at different heights and every reported tip lies on a single verified justification path, the anchor is the lowest reported block and the evidence is `verified_ancestry`. A missing source, conflict, unresolved path or stale sample yields HTTP 503 with a reason.
 
-## Run your own observer
+Observer checks reported identity and verifies the raw block hashes and signatures it traverses for ancestry. Endpoint agreement describes the configured sources. Consensus and operator independence require their own evidence. Use the selected hash with a transport that binds its response to the expected network, shard and block. [Read-anchor API](docs/READ-ANCHOR.md) · [Assurance matrix](docs/ASSURANCE.md)
 
-With Git and a stable Rust toolchain:
+## Try the decision locally
+
+You need Git and a stable Rust toolchain. This test starts loopback endpoints and exercises the real Observer API. It checks the transition from insufficient coverage to an available anchor, then ages the sample and checks the 503 response.
 
 ```sh
 git clone https://github.com/rhovision-org/rho-observer.git
 cd rho-observer
-cargo build --release --locked
-./target/release/rchain-observer --node A=http://127.0.0.1:40403 --node B=http://127.0.0.1:41403 once
+cargo test --locked health_readiness_freshness_and_http_boundary_are_distinct
 ```
 
-Replace the example local addresses with endpoints you are authorized to observe. For a continuously refreshed HTTP service, use the `serve` subcommand:
+With two local Rholo HTTP endpoints available, replace the example addresses and start the service. Change `--stale-after-ms` to suit how long your application can use a sample.
 
 ```sh
-./target/release/rchain-observer --node A=http://127.0.0.1:40403 --node B=http://127.0.0.1:41403 serve --listen 127.0.0.1:8088 --refresh-ms 5000 --stale-after-ms 30000
+cargo run --locked -- \
+  --node west=http://127.0.0.1:40403 \
+  --node east=http://127.0.0.1:41403 \
+  serve --listen 127.0.0.1:8088 --refresh-ms 5000 --stale-after-ms 30000
 ```
 
-Then visit `/v1/observation` for the report, `/health` for liveness and `/ready` for the readiness decision. Applications can also scrape `/metrics`. Repeated reads use the cache, rather than repeatedly polling the underlying nodes.
+In another terminal, `curl -i http://127.0.0.1:8088/v1/read-anchor` returns the anchor envelope or a 503 reason. For one JSON sample, pass `once` immediately after the `--node` flags. The service also exposes `/health`, `/ready` and `/metrics`. [Setup and operations](docs/GUIDE.md) · [DApp integration](docs/BUILDING-DAPPS.md)
 
-## Pin an application read
+## What an application does next
 
-`GET /v1/read-anchor` selects a block from the same cached sample. A successful response includes its network, shard, height, hash and the evidence for selecting it. If reports agree, the endpoint returns that block. With verified lag, it returns the oldest reported block only when every reported tip lies on a single verified path to it.
+![Forge and enumerated Foundry generate artifacts for Weave recovery. Observer separately supplies a finalized read anchor for an application’s by-hash read.](docs/images/ecosystem.svg)
 
-Read at the exact hash and handle HTTP 503 by deferring the read. See the [anchor response format and trust boundaries](docs/READ-ANCHOR.md).
+[Weave](https://github.com/rhovision-org/rho-weave) has an optional adapter that checks an Observer envelope and binds a caller-provided read to its hash. In the native reservation demo it withheld that read when the standalone node had no finalized fringe. The actual recovery ran separately at the node's exploration checkpoint. [Reservation demo](https://github.com/rhovision-org/rho-weave/blob/main/docs/RECOVERY.md)
 
-## Behind the picture
+The decision to update state belongs to the application and its actor. [Forge](https://github.com/rhovision-org/rho-forge) builds actors for workflows whose resources can move in independent lanes. [Foundry](https://github.com/rhovision-org/rho-foundry) compiles contracts around arithmetic guards and quotas. Either can be used in an application that reads Observer evidence. [Interface map](docs/ECOSYSTEM.md)
 
-```mermaid
-flowchart LR
- A["Configured endpoints"] --> B["Bounded read-only polling"]
- B --> C["Compare identities and coverage"]
- C --> D["Cached evidence"]
- D --> E["Rholox / applications"]
- D --> F["Health, readiness, metrics"]
- C -. "When applicable" .-> G["Bounded ancestry checks"]
- G -.-> D
-```
+[Repository structure and contributions](docs/DEVELOPMENT.md) · [CI](https://github.com/rhovision-org/rho-observer/actions)
 
-## Trust boundary
+## License
 
-Observer never signs transactions, proposes blocks or changes validators. It is not an independent Casper implementation, a stake-weighted quorum certificate or proof that configured endpoints are independently operated. It reports evidence and uncertainty; the application decides what to do with it.
-
-The [technical guide](docs/GUIDE.md) includes the API schema, verdict definitions, resource bounds, verification matrix, deployment history and rollback procedure. See the [assurance matrix](docs/ASSURANCE.md), [DApp integration guide](docs/BUILDING-DAPPS.md), and [current CI](https://github.com/rhovision-org/rho-observer/actions). The historical dependency audit failure RUSTSEC-2026-0592 was addressed in the lockfile by updating url to 2.5.9; All four jobs, including cargo audit, passed in the [dependency-fix CI run](https://github.com/rhovision-org/rho-observer/actions/runs/45798347508). No live service upgrade is implied.
-
-## The Rho family
-
-- **[Rho Weave](https://github.com/rhovision-org/rho-weave)** — Find a safe next move when information is missing.
-- **[Rho Forge](https://github.com/rhovision-org/rho-forge)** — Turn resource flows into executable actors.
-- **[Rho Foundry](https://github.com/rhovision-org/rho-foundry)** — Turn guarded rules into executable contracts.
-
-Observer supplies an anchor for external reads. Weave derives recovery decisions from authorized resource operations. Forge builds the actors for resource flows, and Foundry handles arithmetic guards and counters. [How the projects fit together](docs/ECOSYSTEM.md)
-
-## License and attribution
-
-[Apache License 2.0](LICENSE) · [NOTICE](NOTICE)
-
-Project creator and lead developer: [AixAria (@aixaria0)](https://github.com/aixaria0). Contributors retain rights in their respective contributions. Hosting in RhoVision is not a transfer of authorship.
+[Apache License 2.0](LICENSE) · [NOTICE](NOTICE). Project creator and lead developer [AixAria](https://github.com/aixaria0). Contributors retain rights in their respective contributions. Hosting in RhoVision does not transfer authorship.

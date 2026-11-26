@@ -11,7 +11,7 @@ It records what each configured source actually returned instead of treating one
 [![Rust](https://img.shields.io/badge/runtime-Rust-1a2638?logo=rust)](https://www.rust-lang.org/)
 [![Read only](https://img.shields.io/badge/mode-read--only-15817d)](#trust-boundary)
 
-[Live Rholox workspace](https://rholox.com/#rho-observer) ·
+[Rholox Observer panel source](https://github.com/aixaria0/Rholox/blob/main/src/RhoObserverPanel.tsx) ·
 [Public observation](https://testnet.rhobot.net/observer/v1/observation) ·
 [Service health](https://testnet.rhobot.net/observer/health) ·
 [Assurance matrix](../docs/ASSURANCE.md)
@@ -86,7 +86,7 @@ Every verdict is evidence-scoped: `agreement`, `proven_lag`, `height_skew`, `maj
 
 **Project creator and lead developer:** [AixAria (`@aixaria0`)](https://github.com/aixaria0). Source hosted at [rhovision-org/rho-observer](https://github.com/rhovision-org/rho-observer). Hosting and project authorship are separate; contributors retain rights in their respective contributions.
 
-[Rholox](https://rholox.com) · [Hosted observation API](https://testnet.rhobot.net/observer/v1/observation) · [Hosted health](https://testnet.rhobot.net/observer/health) · [DApp guide](../docs/BUILDING-DAPPS.md)
+[Rholox repository](https://github.com/aixaria0/Rholox) · [Hosted observation API](https://testnet.rhobot.net/observer/v1/observation) · [Hosted health](https://testnet.rhobot.net/observer/health) · [DApp guide](../docs/BUILDING-DAPPS.md)
 
 The hosted deployment can run a different revision from this repository. Inspect `/health` and its `version` field before assuming that a source change has been deployed. Older deployments do not expose that field.
 
@@ -100,7 +100,7 @@ The hosted deployment can run a different revision from this repository. Inspect
 | Report schema | `schema_version: 1` |
 | Integration | [PR #4](https://github.com/rhovision-org/rho-observer/pull/4), merge `a5d0796` |
 | Post-merge verification | [CI run 39885469376](https://github.com/rhovision-org/rho-observer/actions/runs/39885469376), all four jobs successful |
-| Browser consumer | [Rholox](https://rholox.com/); source and live deployment may differ |
+| Browser consumer | [Rholox Observer panel](https://github.com/aixaria0/Rholox/blob/main/src/RhoObserverPanel.tsx). The live deployment may run a different revision. |
 | Production check | 23 October 2026: health/readiness returned 200, version 0.2.0, fresh complete 4/4 coverage and single public CORS/cache headers |
 
 The previous 0.2.0 binary came from the digest-verified CI artifact at `6f94f76`. The subsequent `1abec73` change covered proxy configuration, documentation and CI, without changing Rust source. That historical deployment matched its reviewed head. On 7 November 2026, the observer was upgraded with the CI-verified static Linux 0.3.0 artifact; the server unit was corrected to use a reachable endpoint for the two remote nodes. The old binary and unit were backed up before restart. The 96 MiB service memory limit and all validator processes were left unchanged. The 4/4 readiness result is a point-in-time observation, not a guarantee of continuing node availability or independent Casper finality.
@@ -120,7 +120,7 @@ The four projects share an idea: make the parts of engineering that can be expre
 
 Observer answers a question that comes before execution: what did the configured network sources actually report? A developer could use those reports as one input to an independently designed application policy. Weave is useful when that policy must reason about several possible situations. Forge and Foundry address the contract-writing side of the problem, not network observation.
 
-Observer already has a documented Rholox consumer. No adapter that automatically translates Observer reports into a Weave model or deploys a Forge/Foundry contract is provided here.
+Rholox consumes the observation report. An application can use Weave's optional adapter with the newer read-anchor envelope and its own trusted transport. Actor capabilities and revision checks still govern contract calls. [Integration interfaces](ECOSYSTEM.md)
 
 For a concrete example of how a developer could combine the ideas, see [the ecosystem guide](../docs/ECOSYSTEM.md). The examples are architectural illustrations, not claims of an existing integrated deployment.
 
