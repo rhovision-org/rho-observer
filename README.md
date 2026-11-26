@@ -6,6 +6,8 @@ I built Observer to make that decision inspectable. It asks several Rholo or RCh
 
 Created by [AixAria](https://github.com/aixaria0).
 
+Forge and Foundry build contracts. Weave can use their finite state tables to generate recovery code. Observer gives the application evidence for a separate network read. [How the projects connect](#what-an-application-does-next)
+
 ![Observer receives two matching reports while a third source is offline and withholds the read anchor. The third source then reports block 841. A verified path from 842 to 841 makes 841 the anchor.](docs/motion/overview.gif)
 
 [Static storyboard](docs/motion/overview.png) · [Text walkthrough](docs/motion/README.md)
