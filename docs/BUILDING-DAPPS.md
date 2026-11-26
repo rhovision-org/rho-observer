@@ -623,4 +623,4 @@ Rholox should make the correct path shorter, not make the chain look simpler tha
 - [`../src/verdict.rs`](../src/verdict.rs) — verdict classifier
 - [`../src/main.rs`](../src/main.rs) — CLI and HTTP API
 - [`../examples/hello.rho`](../examples/hello.rho) — smallest Rholang example
-- [Rholox](https://rholox.com) — public-testnet application surface
+- [Rholox repository](https://github.com/aixaria0/Rholox) documents the public-testnet application surface.

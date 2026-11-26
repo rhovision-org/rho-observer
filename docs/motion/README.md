@@ -1,11 +1,13 @@
-# Motion graphics
+# Evidence before a read
 
-An illustrated example, not live telemetry. [Static image](overview.png).
+Two responding sources report block 842. Observer can record agreement among them while reporting two of three sources covered. It withholds the anchor. When the last source reports 841, the example has full coverage. A verified raw justification path from 842 to 841 allows a read at 841.
 
-Regenerate with Python and Pillow in an isolated environment:
+The radar sweep represents sampling, and the marks on A, B and C show the source labels, not validator weights. The block heights illustrate the verified-ancestry case. [Static storyboard](overview.png) · [Read-anchor rules](../READ-ANCHOR.md)
+
+The graphic uses cyan instrument marks and DejaVu Sans plus DejaVu Sans Mono. Regenerate with Python, Pillow, fontconfig and those fonts installed.
 
 ```sh
-python docs/motion/render.py observer docs/motion /path/to/font-directory
+python3 docs/motion/render.py
 ```
 
-Fonts are selected from Roboto or DejaVu families, with serif and monospace alternatives when available. No font files are distributed. The animation generator is optional documentation tooling, not a product dependency.
+The command writes the GIF and the static PNG beside the renderer.
