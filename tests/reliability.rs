@@ -288,6 +288,11 @@ async fn health_readiness_freshness_and_http_boundary_are_distinct() {
     };
     let (url, task) = spawn(service::router(state.clone())).await;
     let client = reqwest::Client::new();
+    let anchor_url = format!("{url}/v1/read-anchor");
+    let anchor = client.get(&anchor_url).send().await.unwrap();
+    assert_eq!(anchor.status(), 503);
+    let anchor: Value = anchor.json().await.unwrap();
+    assert_eq!(anchor["status"], "insufficient_sources");
     assert_eq!(
         client
             .get(format!("{url}/ready"))
@@ -305,12 +310,24 @@ async fn health_readiness_freshness_and_http_boundary_are_distinct() {
     assert_eq!(ready.status(), 200);
     assert_eq!(ready.headers()["cache-control"], "no-store");
     assert_eq!(ready.headers()["x-content-type-options"], "nosniff");
+    let anchor = client.get(&anchor_url).send().await.unwrap();
+    assert_eq!(anchor.status(), 200);
+    let anchor: Value = anchor.json().await.unwrap();
+    assert_eq!(anchor["schema"], "rho-observer/read-anchor/v1");
+    assert_eq!(anchor["evidence"], "unanimous_reports");
+    assert_eq!(anchor["anchor"]["network_id"], "testnet");
+    assert_eq!(anchor["anchor"]["block_hash"], "a".repeat(64));
     state.snapshot.write().await.sampled = Instant::now() - Duration::from_secs(31);
     let health = client.get(format!("{url}/health")).send().await.unwrap();
     assert_eq!(health.status(), 200);
     let health: Value = health.json().await.unwrap();
     assert_eq!(health["status"], "stale");
     assert_eq!(health["ready"], false);
+    let anchor = client.get(&anchor_url).send().await.unwrap();
+    assert_eq!(anchor.status(), 503);
+    let anchor: Value = anchor.json().await.unwrap();
+    assert_eq!(anchor["status"], "stale");
+    assert_eq!(anchor["anchor"], Value::Null);
     assert_eq!(
         client
             .get(format!("{url}/ready"))
@@ -329,6 +346,7 @@ async fn health_readiness_freshness_and_http_boundary_are_distinct() {
             .status(),
         405
     );
+    assert_eq!(client.post(&anchor_url).send().await.unwrap().status(), 405);
     assert_eq!(
         client
             .get(format!("{url}/api/deploy"))

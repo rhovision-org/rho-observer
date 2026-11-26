@@ -15,7 +15,10 @@ use axum::{
 use serde_json::{json, Value};
 use tokio::sync::RwLock;
 
-use crate::model::{ObservationReport, VerdictClass};
+use crate::{
+    anchor::{AnchorStatus, ReadAnchor},
+    model::{ObservationReport, VerdictClass},
+};
 
 pub struct CachedReport {
     pub report: ObservationReport,
@@ -34,6 +37,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/ready", get(ready))
         .route("/metrics", get(metrics))
         .route("/v1/observation", get(observation))
+        .route("/v1/read-anchor", get(read_anchor))
         .with_state(state)
         .layer(middleware::from_fn(headers))
 }
@@ -235,4 +239,19 @@ async fn metrics(
 
 async fn observation(State(state): State<ApiState>) -> Json<ObservationReport> {
     Json(state.snapshot.read().await.report.clone())
+}
+
+async fn read_anchor(State(state): State<ApiState>) -> (StatusCode, Json<ReadAnchor>) {
+    let snapshot = state.snapshot.read().await;
+    let response = ReadAnchor::from_report(
+        &snapshot.report,
+        snapshot.sampled.elapsed(),
+        state.stale_after,
+    );
+    let status = if response.status == AnchorStatus::Available {
+        StatusCode::OK
+    } else {
+        StatusCode::SERVICE_UNAVAILABLE
+    };
+    (status, Json(response))
 }

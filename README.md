@@ -49,6 +49,12 @@ Replace the example local addresses with endpoints you are authorized to observe
 
 Then visit `/v1/observation` for the report, `/health` for liveness and `/ready` for the readiness decision. Applications can also scrape `/metrics`. Repeated reads use the cache, rather than repeatedly polling the underlying nodes.
 
+## Pin an application read
+
+`GET /v1/read-anchor` selects a block from the same cached sample. A successful response includes its network, shard, height, hash and the evidence for selecting it. If reports agree, the endpoint returns that block. With verified lag, it returns the oldest reported block only when every reported tip lies on a single verified path to it.
+
+Read at the exact hash and handle HTTP 503 by deferring the read. See the [anchor response format and trust boundaries](docs/READ-ANCHOR.md).
+
 ## Behind the picture
 
 ```mermaid
@@ -74,9 +80,7 @@ The [technical guide](docs/GUIDE.md) includes the API schema, verdict definition
 - **[Rho Forge](https://github.com/rhovision-org/rho-forge)** — Turn resource flows into executable actors.
 - **[Rho Foundry](https://github.com/rhovision-org/rho-foundry)** — Turn guarded rules into executable contracts.
 
-Observer is the eyes, not the decision-maker. Weave can help a developer design what to do with uncertain observations. Forge and Foundry are two ways to generate the contract logic that runs underneath an application.
-
-They share a direction, not an automatic integration. [See how the pieces could fit together](docs/ECOSYSTEM.md).
+Observer supplies an anchor for external reads. Weave derives recovery decisions from authorized resource operations. Forge builds the actors for resource flows, and Foundry handles arithmetic guards and counters. [How the projects fit together](docs/ECOSYSTEM.md)
 
 ## License and attribution
 

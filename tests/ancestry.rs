@@ -14,6 +14,7 @@ use k256::ecdsa::{Signature, SigningKey};
 use k256::SecretKey;
 use prost::Message;
 use rchain_observer::{
+    anchor::{AnchorEvidence, AnchorStatus, ReadAnchor},
     model::{AncestryClass, NodeTarget, VerdictClass},
     observer::Observer,
 };
@@ -222,6 +223,32 @@ async fn raw_preimages_prove_lag_and_supply_all_ancestry_fields() {
     assert_eq!(check.examined_blocks, 2);
     assert_eq!(check.cryptographically_verified_blocks, 2);
     assert!(check.reason.contains("BLAKE2b-256-verified"));
+    let anchor = ReadAnchor::from_report(&report, Duration::ZERO, Duration::from_secs(1));
+    assert_eq!(anchor.status, AnchorStatus::Available);
+    assert_eq!(anchor.evidence, Some(AnchorEvidence::VerifiedAncestry));
+    assert_eq!(anchor.anchor.as_ref(), Some(&check.lower));
+}
+
+#[tokio::test]
+async fn verified_siblings_do_not_supply_a_common_reported_anchor() {
+    let lower = raw_fixture(98, &[]);
+    let sibling = raw_fixture(99, &[]);
+    let higher = raw_fixture(100, &[lower.hash.clone(), sibling.hash.clone()]);
+    let blocks = [&lower, &sibling, &higher]
+        .into_iter()
+        .map(|block| (block.hash.clone(), block.response.clone()))
+        .collect();
+    let a = spawn_node(98, &lower.hash, HashMap::new(), None).await;
+    let b = spawn_node(99, &sibling.hash, HashMap::new(), None).await;
+    let c = spawn_node(100, &higher.hash, blocks, None).await;
+    let report = Observer::new(vec![a, b, c], Duration::from_secs(1))
+        .unwrap()
+        .observe()
+        .await;
+    assert_eq!(report.verdict.class, VerdictClass::ProvenLag);
+    let anchor = ReadAnchor::from_report(&report, Duration::ZERO, Duration::from_secs(1));
+    assert_eq!(anchor.status, AnchorStatus::Unresolved);
+    assert!(anchor.anchor.is_none());
 }
 
 #[tokio::test]
