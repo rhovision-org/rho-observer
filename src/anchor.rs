@@ -68,7 +68,9 @@ fn select(report: &ObservationReport) -> Result<(FinalizedIdentity, AnchorEviden
     let verdict = &report.verdict;
     if matches!(
         verdict.class,
-        VerdictClass::Majority | VerdictClass::Divergence | VerdictClass::ConflictingFinalizedHistory
+        VerdictClass::Majority
+            | VerdictClass::Divergence
+            | VerdictClass::ConflictingFinalizedHistory
     ) {
         return Err(AnchorStatus::Conflicting);
     }
