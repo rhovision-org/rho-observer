@@ -20,6 +20,32 @@ It records what each configured source actually returned instead of treating one
 
 > **Observation is not consensus certification.** Agreement among reachable endpoints, cryptographically verified ancestry, full node coverage and stake-weighted finality are different claims. Rho Observer makes their boundaries visible.
 
+![Animated Observer overview](docs/motion/overview.gif)
+
+[Static version](docs/motion/overview.png) · [Motion source](docs/motion/README.md)
+
+## Why I built this
+
+It is easy to look at one node, see a successful HTTP response and assume the whole network is healthy. But a reachable node is not necessarily a current node. Two nodes at different heights may share the same history, while two nodes at the same height may disagree about the block.
+
+I wanted a small read-only service that keeps these distinctions visible rather than hiding them behind a single green light.
+
+Rho Observer collects what configured endpoints actually report, compares like with like and preserves missing evidence. A browser or monitoring system can read one cached report without repeatedly asking the underlying nodes for the same data.
+
+## What it adds
+
+Imagine three configured sources. Two return the same finalized block identity. The third times out. An observer can report agreement among the two comparable sources, but it must not say that all three agree. The motion above illustrates exactly this distinction: agreement is visible, coverage is incomplete, and readiness is false.
+
+| Situation | What Observer contributes |
+| --- | --- |
+| One endpoint responds | A report with explicit coverage; not a network-wide verdict |
+| Several comparable snapshots agree | A clear comparison of the reported identities |
+| Heights differ | Bounded raw ancestry checks when applicable |
+| A source is missing or malformed | The incomplete row remains visible |
+| A dashboard repeatedly polls | Cached evidence and bounded-label metrics |
+
+The HTTP API is read-only. It neither signs transactions nor submits proposals, and it does not replace Casper validation.
+
 ## Navigate
 
 [Architecture](#architecture-at-a-glance) · [Evidence semantics](#evidence-at-a-glance) ·
@@ -69,7 +95,7 @@ The hosted deployment can run a different revision from this repository. Inspect
 | Item | Recorded value |
 | --- | --- |
 | Previous hosted baseline | `0.2.0` (23 October 2026; replaced on 7 November 2026) |
-| Current main source | `0.3.0`; CI on [merge `3933e432`](https://github.com/rhovision-org/rho-observer/actions/runs/42302946085) passed, independent of deployment |
+| Recorded source version | `0.3.0`; CI on [merge `3933e432`](https://github.com/rhovision-org/rho-observer/actions/runs/42302946085) passed, independent of deployment |
 | Verified live upgrade | `0.3.0` deployed 7 November 2026; public `/health` and `/ready` responded 200, with fresh 4/4 reachable and comparable nodes and `agreement` at that observation time |
 | Report schema | `schema_version: 1` |
 | Integration | [PR #4](https://github.com/rhovision-org/rho-observer/pull/4), merge `a5d0796` |
@@ -81,28 +107,22 @@ The previous 0.2.0 binary came from the digest-verified CI artifact at `6f94f76`
 
 ## The Rho project family
 
-Four independent tools exploring different parts of building on RhoVision: observing a system, deciding under uncertainty, and generating executable contracts.
+The four projects share an idea: make the parts of engineering that can be expressed precisely easier to inspect, reuse and execute. They are independent tools, not four stages of a mandatory runtime stack.
 
-| Project | What it does |
-| --- | --- |
-| **Rho Observer (you are here)** | Read-only network observations, coverage and evidence. |
-| [Rho Weave](https://github.com/rhovision-org/rho-weave) | Checked decision policies under partial information. |
-| [Rho Forge](https://github.com/rhovision-org/rho-forge) | Generate actors from resource-flow and conservation rules. |
-| [Rho Foundry](https://github.com/rhovision-org/rho-foundry) | Generate contracts from integer resources, guards and goals. |
+| Project | Focus | Capability |
+| --- | --- | --- |
+| **Rho Observer (you are here)** | Read-only evidence | Compare configured endpoints and keep missing or conflicting evidence visible. |
+| [Rho Weave](https://github.com/rhovision-org/rho-weave) | Decision policies | Synthesize safe finite strategies when observations leave several states possible. |
+| [Rho Forge](https://github.com/rhovision-org/rho-forge) | Resource-flow actors | Generate Rholang actors from consumption, production, conservation and role-specific missions. |
+| [Rho Foundry](https://github.com/rhovision-org/rho-foundry) | Guarded contracts | Generate Rholang factories from bounded integer resources, guards, invariants and goals. |
 
-These are complementary design directions, not an integrated runtime pipeline. Forge and Foundry have overlapping but distinct specification formats and actor interfaces. No project requires the others to run.
+### How they relate
 
-## License and attribution
+Observer answers a question that comes before execution: what did the configured network sources actually report? A developer could use those reports as one input to an independently designed application policy. Weave is useful when that policy must reason about several possible situations. Forge and Foundry address the contract-writing side of the problem, not network observation.
 
-Rho Observer is distributed under the **Apache License, Version 2.0**.
-Read [LICENSE](LICENSE) for the full legal terms and [NOTICE](NOTICE) for
-project attribution. The license permits reuse, redistribution and modification,
-subject to its notice and change-documentation conditions, and includes an
-express patent grant. It does not grant trademark rights, guarantee service
-availability, or establish a network consensus certificate.
+Observer already has a documented Rholox consumer. No adapter that automatically translates Observer reports into a Weave model or deploys a Forge/Foundry contract is provided here.
 
-Repository location is not an ownership claim. Copyright in contributions
-remains with the respective rightsholders, as documented by repository history.
+For a concrete example of how a developer could combine the ideas, see [the ecosystem guide](docs/ECOSYSTEM.md). The examples are architectural illustrations, not claims of an existing integrated deployment.
 
 ## Identity and compatibility
 
@@ -124,6 +144,13 @@ Endpoint diversity is operator configuration. Different labels and URLs do not p
 The observer holds no signing keys and submits no deploys, proposals or admin mutations. Applications remain responsible for their own execution, authorization and risk policies.
 
 ## Build and run
+
+Start with a current stable Rust toolchain and Git. The following commands use example local endpoints; replace them with HTTP endpoints you are authorized to observe.
+
+```bash
+git clone https://github.com/rhovision-org/rho-observer.git
+cd rho-observer
+```
 
 ```bash
 cargo build --release --locked
@@ -352,6 +379,8 @@ Upstream errors are intentionally sanitized. Use the operator's private node dia
 
 ## Reproducible verification
 
+**Security check (26 November 2026):** the [recorded CI audit](https://github.com/rhovision-org/rho-observer/actions/runs/45790558034) flags the locked `url` 2.5.8 dependency ([RUSTSEC-2026-0592](https://rustsec.org/advisories/RUSTSEC-2026-0592); upgrade to 2.5.9 or newer recommended). Rust, proxy and release jobs passed in that run. This documentation change does not update the dependency or imply a new deployment. Follow the current CI status for the latest result.
+
 ```bash
 cargo fmt --all -- --check
 cargo clippy --all-targets --all-features --locked -- -D warnings
@@ -389,3 +418,15 @@ CI runs on pushes and pull requests. Passing local mocks, a release build or a d
 | `scripts/test-nginx-proxy.py` | Isolated real-Nginx integration contract |
 
 See [the assurance matrix](docs/ASSURANCE.md) for invariant coverage, residual trust and review limits. [Rholox](https://github.com/aixaria0/Rholox) consumes this API, validates report consistency, preserves per-source rows, and distinguishes stale/limited/conflicting evidence in its UI. [Building DApps](docs/BUILDING-DAPPS.md) documents the separate execution path.
+
+## License and attribution
+
+Rho Observer is distributed under the **Apache License, Version 2.0**.
+Read [LICENSE](LICENSE) for the full legal terms and [NOTICE](NOTICE) for
+project attribution. The license permits reuse, redistribution and modification,
+subject to its notice and change-documentation conditions, and includes an
+express patent grant. It does not grant trademark rights, guarantee service
+availability, or establish a network consensus certificate.
+
+Repository location is not an ownership claim. Copyright in contributions
+remains with the respective rightsholders, as documented by repository history.
