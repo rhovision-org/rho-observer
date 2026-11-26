@@ -79,6 +79,19 @@ The hosted deployment can run a different revision from this repository. Inspect
 
 The previous 0.2.0 binary came from the digest-verified CI artifact at `6f94f76`. The subsequent `1abec73` change covered proxy configuration, documentation and CI, without changing Rust source. That historical deployment matched its reviewed head. On 7 November 2026, the observer was upgraded with the CI-verified static Linux 0.3.0 artifact; the server unit was corrected to use a reachable endpoint for the two remote nodes. The old binary and unit were backed up before restart. The 96 MiB service memory limit and all validator processes were left unchanged. The 4/4 readiness result is a point-in-time observation, not a guarantee of continuing node availability or independent Casper finality.
 
+## The Rho project family
+
+Four independent tools exploring different parts of building on RhoVision: observing a system, deciding under uncertainty, and generating executable contracts.
+
+| Project | What it does |
+| --- | --- |
+| **Rho Observer (you are here)** | Read-only network observations, coverage and evidence. |
+| [Rho Weave](https://github.com/rhovision-org/rho-weave) | Checked decision policies under partial information. |
+| [Rho Forge](https://github.com/rhovision-org/rho-forge) | Generate actors from resource-flow and conservation rules. |
+| [Rho Foundry](https://github.com/rhovision-org/rho-foundry) | Generate contracts from integer resources, guards and goals. |
+
+These are complementary design directions, not an integrated runtime pipeline. Forge and Foundry have overlapping but distinct specification formats and actor interfaces. No project requires the others to run.
+
 ## License and attribution
 
 Rho Observer is distributed under the **Apache License, Version 2.0**.
